@@ -367,3 +367,9 @@ def get_parallel_rotations():
             parallel_rotations += [canonical]
     assert len(parallel_rotations) == 24
     return parallel_rotations
+
+def quat_from_angle_and_axis(angle, axis):
+    axis /= np.linalg.norm(axis)
+    quat = np.concatenate([[np.cos(angle/2)], np.sin(angle/2)*axis])
+    quat /= np.linalg.norm(quat)
+    return quat
