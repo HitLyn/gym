@@ -4,8 +4,8 @@ import copy
 
 import os
 
-from gym.envs.robotics import rotations, robot_env, utils
-from rotations import quat_from_angle_and_axis
+from gym.envs.robotics import robot_env, utils, rotations
+from gym.envs.robotics.rotations import quat_from_angle_and_axis
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
@@ -17,18 +17,20 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         functions related are defined only to satisfy the overall structure requirentments.
     """
 
-    def __init__(self, model_path, n_substeps, initial_qpos, image_path):
-        super(FetchGenerateEnv, self).__init__(model_path = model_path, n_substeps = n_substeps, n_actions = 3, initial_qpos = initial_qpos)
+    def __init__(self, model_path, n_substeps, initial_qpos, image_path, has_object = True):
         self.image_path = image_path
         self.object_target_range, self.robot_target_range = self._get_target_range()
+        self.has_object = has_object
+        # self.object = self.reset_object()
 
-    def compute_reward(self):
+        super(FetchGenerateEnv, self).__init__(model_path = model_path, n_substeps = n_substeps, n_actions = 3, initial_qpos = initial_qpos)
+    def compute_reward(self, achieved_goal, goal, info):
         return 0
 
     def _set_action(self, action):
         assert action.shape == (3,)
         action = action.copy() # make sure action keep the same outside of this scope
-        pos_ctrl = action[:3]
+        pos_ctrl = 0.05*action[:3]
         rot_ctrl = [1., 0., 1., 0.]
         action = np.concatenate([pos_ctrl, rot_ctrl])
         utils.mocap_set_action(self.sim, action)
@@ -55,7 +57,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         if not self.has_object:
             achieved_goal = grip_pos.copy()
         else:
-            achieved_goal = np.squeeze(np.concatenate(object_pos.copy(), object_rot.copy()))
+            achieved_goal = self.sim.data.get_joint_qpos('object0:joint')
 
         obs = grip_pos
 
@@ -94,20 +96,21 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         # robot render
 
 
-    def render(self, mode='rgb_array', width=1080, height=720):
-        return super(FetchEnv, self).render(mode, width, height)
+    def render(self, mode='rgb_array'):
+        print("viewer mode: {}".format(mode))
+        return super(FetchGenerateEnv, self).render(mode)
 
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
         # Randomize start position of object.
-        if self.has_object:
-            object_xpos = self.initial_gripper_xpos[:2]
-            while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
-                object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
-            object_qpos = self.sim.data.get_joint_qpos('object0:joint')
-            assert object_qpos.shape == (7,)
-            object_qpos[:2] = object_xpos
-            self.sim.data.set_joint_qpos('object0:joint', object_qpos)
+        # if self.has_object:
+        #     object_xpos = self.initial_gripper_xpos[:2]
+        #     while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+        #         object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
+        #     object_qpos = self.sim.data.get_joint_qpos('object0:joint')
+        #     assert object_qpos.shape == (7,)
+        #     object_qpos[:2] = object_xpos
+        #     self.sim.data.set_joint_qpos('object0:joint', object_qpos)
 
         self.sim.forward()
         return True
@@ -120,7 +123,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         self.sim.forward()
 
         # Move end effector into position.
-        gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
+        gripper_target = np.array([-0.498, 0.005, -0.31]) + self.sim.data.get_site_xpos('robot0:grip')
         gripper_rotation = np.array([1., 0., 1., 0.])
         self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
         self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
@@ -131,22 +134,41 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
         if self.has_object:
             self.height_offset = self.sim.data.get_site_xpos('object0')[2]
+            self.reset_object()
 
     def _is_success(self, achieved_goal, desired_goal):
-        d = goal_distance(achieved_goal, desired_goal)
-        return (d < self.distance_threshold).astype(np.float32)
+        # d = goal_distance(achieved_goal, desired_goal)
+        # return (d < self.distance_threshold).astype(np.float32)
+        return 0
+
+    def _sample_goal(self):
+        x_min, x_max, y_min, y_max = self.object_target_range
+        new_goal = np.zeros(7)
+        pos_x = np.random.uniform(x_min, x_max)
+        pos_y = np.random.uniform(y_min, y_max)
+        pos_z = self.height_offset
+        # angle
+        angle = np.random.uniform(-np.pi, np.pi)
+        axis = np.array([0., 0., 1.])
+        angle_quat = quat_from_angle_and_axis(angle, axis)
+        angle_quat /= np.linalg.norm(angle)
+
+        new_goal[:3] = [pos_x, pos_y, pos_z]
+        new_goal[3:] = angle_quat
+        self.goal = new_goal.copy()
+        return new_goal.copy()
 
     def save_image(self, option, idx):
         # option (str): 'anchor', 'goal', 'object', 'robot'
         image = self.render()
 
         # mkdir or get access to the path
-        if not os.path.exists(os.path.join(self.path, option)):
-            os.makedirs(os.path.join(self.path, option))
+        if not os.path.exists(os.path.join(self.image_path, option)):
+            os.makedirs(os.path.join(self.image_path, option))
         else:
-            print('save image to {}'.format(os.path.join(self.path, option)))
+            print('save image to {}'.format(os.path.join(self.image_path, option)))
 
-        file_name = "{}/{:04d}.png".format(os.path.join(self.path, option), idx)
+        file_name = "{}/{:06d}.png".format(os.path.join(self.image_path, option), idx)
         plt.imsave(file_name, image)
 
     def reset_goal(self):
@@ -166,7 +188,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         self.goal = new_goal.copy()
 
     def reset_anchor(self):
-        self.reset_goal()
+        self.reset_object()
         self.reset_robot()
         self.reset_goal()
 
@@ -186,6 +208,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         new_goal[:3] = [pos_x, pos_y, pos_z]
         new_goal[3:] = angle_quat
         self.object = new_goal.copy()
+        return new_goal
 
     def reset_robot(self):
         x_min, x_max, y_min, y_max = self.robot_target_range
@@ -220,7 +243,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
 
 
     def _get_target_range(self):
-        object_target_range = [x_min, x_max, y_min, y_max]
-        robot_target_range = [x_min, x_max, y_min, y_max]
+        object_target_range = [0.85, 1.65, 0.35, 1.0]
+        robot_target_range = [0.9, 1.55, 0.4, 0.9]
 
         return object_target_range, robot_target_range

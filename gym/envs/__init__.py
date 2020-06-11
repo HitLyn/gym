@@ -374,6 +374,13 @@ for reward_type in ['sparse', 'dense']:
         max_episode_steps=50,
     )
 
+    register(
+        id='FetchPushGenerate{}-v1'.format(suffix),
+        entry_point='gym.envs.robotics:FetchPushGenerateEnv',
+        kwargs=kwargs,
+        max_episode_steps=50,
+    )
+
     # Hand
     register(
         id='HandReach{}-v0'.format(suffix),
