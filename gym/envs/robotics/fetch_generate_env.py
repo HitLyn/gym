@@ -97,7 +97,7 @@ class FetchGenerateEnv(robot_env.RobotEnv):
 
 
     def render(self, mode='rgb_array'):
-        print("viewer mode: {}".format(mode))
+        # print("viewer mode: {}".format(mode))
         return super(FetchGenerateEnv, self).render(mode)
 
     def _reset_sim(self):
@@ -187,6 +187,12 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         new_goal[3:] = angle_quat
         self.goal = new_goal.copy()
 
+        # goal render
+        # goal = self.goal.copy()
+        self.sim.data.set_joint_qpos('target:joint', self.goal)
+        self.sim.data.set_joint_qvel('target:joint', np.zeros(6))
+        return new_goal
+
     def reset_anchor(self):
         self.reset_object()
         self.reset_robot()
@@ -208,6 +214,11 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         new_goal[:3] = [pos_x, pos_y, pos_z]
         new_goal[3:] = angle_quat
         self.object = new_goal.copy()
+
+        # object render
+        # object = self.object.copy()
+        self.sim.data.set_joint_qpos('object0:joint', self.object)
+        self.sim.data.set_joint_qvel('object0:joint', np.zeros(6))
         return new_goal
 
     def reset_robot(self):
@@ -227,9 +238,9 @@ class FetchGenerateEnv(robot_env.RobotEnv):
             return robot_state, object_state, goal_state
         """
         # get robot_state
-        all_state = copy.deepcopy(self.sim.get_state())
+        all_state = self.sim.get_state()
         goal_state = self.goal.copy()
-        object_state = self.sim.data.get_joint_qpos('object0:joint')
+        object_state = self.sim.data.get_joint_qpos('object0:joint').copy()
 
         return {'all_state': all_state, 'goal_state': goal_state, 'object_state': object_state}
 
@@ -239,11 +250,14 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         object_state = state['object_state']
         goal_state = state['goal_state']
 
+        self.goal = goal_state.copy()
+        self.object = object_state.copy()
+
         self.sim.set_state(all_state) # including robot, goal and target
 
 
     def _get_target_range(self):
-        object_target_range = [0.85, 1.65, 0.35, 1.0]
-        robot_target_range = [0.9, 1.55, 0.4, 0.9]
+        object_target_range = [1.0, 1.55, 0.45, 0.85]
+        robot_target_range = [1.1, 1.45, 0.5, 0.8]
 
         return object_target_range, robot_target_range
