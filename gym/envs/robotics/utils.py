@@ -19,6 +19,18 @@ def robot_get_obs(sim):
         )
     return np.zeros(0), np.zeros(0)
 
+def ur5_get_obs(sim):
+    """Returns all joint positions and velocities associated with
+    a robot.
+    """
+    if sim.data.qpos is not None and sim.model.joint_names:
+        names = [n for n in sim.model.joint_names if n.startswith('ur5')]
+        return (
+            np.array([sim.data.get_joint_qpos(name) for name in names]),
+            np.array([sim.data.get_joint_qvel(name) for name in names]),
+        )
+    return np.zeros(0), np.zeros(0)
+
 
 def ctrl_set_action(sim, action):
     """For torque actuators it copies the action into mujoco ctrl field.

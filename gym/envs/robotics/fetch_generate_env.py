@@ -165,8 +165,8 @@ class FetchGenerateEnv(robot_env.RobotEnv):
         # mkdir or get access to the path
         if not os.path.exists(os.path.join(self.image_path, option)):
             os.makedirs(os.path.join(self.image_path, option))
-        else:
-            print('save image to {}'.format(os.path.join(self.image_path, option)))
+        # else:
+            # print('save image to {}'.format(os.path.join(self.image_path, option)))
 
         file_name = "{}/{:06d}.png".format(os.path.join(self.image_path, option), idx)
         plt.imsave(file_name, image)
