@@ -381,6 +381,14 @@ for reward_type in ['sparse', 'dense']:
         max_episode_steps=50,
     )
 
+    # UR5
+    register(
+        id='UR5Push{}-v1'.format(suffix),
+        entry_point='gym.envs.robotics:UR5PushEnv',
+        kwargs=kwargs,
+        max_episode_steps=50,
+    )
+
     # Hand
     register(
         id='HandReach{}-v0'.format(suffix),

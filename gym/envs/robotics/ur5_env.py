@@ -54,19 +54,20 @@ class UR5Env(robot_env.RobotEnv):
     # ----------------------------
 
     def _step_callback(self):
-        if self.block_gripper:
-            self.sim.data.set_joint_qpos('s_model_palm_finger_1_joint', 0.)
-            self.sim.data.set_joint_qpos('s_model_finger_1_joint_1', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_1_joint_2', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_1_joint_3', -1.)
-            self.sim.data.set_joint_qpos('s_model_palm_finger_2_joint', 0.)
-            self.sim.data.set_joint_qpos('s_model_finger_2_joint_1', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_2_joint_2', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_2_joint_3', -1.)
-            self.sim.data.set_joint_qpos('s_model_finger_middle_joint_1', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_middle_joint_2', 1.)
-            self.sim.data.set_joint_qpos('s_model_finger_middle_joint_3', -1.)
-            self.sim.forward()
+        # if self.block_gripper:
+        #     self.sim.data.set_joint_qpos('s_model_palm_finger_1_joint', 0.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_1_joint_1', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_1_joint_2', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_1_joint_3', -1.)
+        #     self.sim.data.set_joint_qpos('s_model_palm_finger_2_joint', 0.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_2_joint_1', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_2_joint_2', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_2_joint_3', -1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_middle_joint_1', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_middle_joint_2', 1.)
+        #     self.sim.data.set_joint_qpos('s_model_finger_middle_joint_3', -1.)
+        #     self.sim.forward()
+        pass
 
     def _set_action(self, action):
         # maybe add gripper contrl here
