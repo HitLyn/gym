@@ -1,6 +1,6 @@
 <mujoco>
     <equality>
-        <weld body1="ur5_mocap" body2="s_model_palm" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
+        <weld body1="ur5_mocap" body2="s_model_tool0" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
     </equality>
 
     <asset>

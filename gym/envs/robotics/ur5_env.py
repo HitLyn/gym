@@ -42,7 +42,7 @@ class UR5Env(robot_env.RobotEnv):
     # GoalEnv methods
     # ----------------------------
 
-    def compute_reward(self, achieved_goal, goal):
+    def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
         d = goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
@@ -73,7 +73,7 @@ class UR5Env(robot_env.RobotEnv):
         # maybe add gripper contrl here
         assert action.shape == (2,)
         action = action.copy()  # ensure that we don't change the action outside of this scope
-        pos_ctrl = action
+        pos_ctrl = np.concatenate([action, np.zeros(1)])
         rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
         action = np.concatenate([pos_ctrl, rot_ctrl])
 
@@ -99,7 +99,7 @@ class UR5Env(robot_env.RobotEnv):
         object_velp -= pusher_velp
 
         # achieved_goal = np.squeeze(object_pos.copy())
-        achieved_goal = np.concatenate(object_pose.ravel(), object_rot.ravel())
+        achieved_goal = np.concatenate([object_pos.ravel(), object_rot.ravel()])
         obs = np.concatenate([
             pusher_pos, object_pos.ravel(), object_rot.ravel(),
         ])
@@ -121,9 +121,9 @@ class UR5Env(robot_env.RobotEnv):
 
     def _render_callback(self):
         # Visualize target.
-        sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
-        site_id = self.sim.model.site_name2id('target0')
-        self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
+        # sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
+        # site_id = self.sim.model.site_name2id('target0')
+        # self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
         self.sim.forward()
 
     def _reset_sim(self):
@@ -142,7 +142,9 @@ class UR5Env(robot_env.RobotEnv):
         return True
 
     def _sample_goal(self):
-        goal = self.initial_pusher_xpos[:2] + self.np_random.uniform(-self.target_range, self.target_range, size=2)
+        goal_pos = self.initial_pusher_xpos[:2] + self.np_random.uniform(-self.target_range, self.target_range, size=2)
+        goal_rot = np.array([1., 0., 1., 0.])
+        goal = np.concatenate([goal_pos, goal_rot])
 
         return goal.copy()
 
@@ -157,17 +159,16 @@ class UR5Env(robot_env.RobotEnv):
         self.sim.forward()
 
         # Move end effector into position.
-        pusher_target = np.array([0.89, 0.74, 0.93])
+        self.initial_pusher_xpos = self.sim.data.get_site_xpos('pusher').copy()
+        pusher_target = self.initial_pusher_xpos[:3]
         pusher_rotation = np.array([1., 0., 1., 0.])
-        self.sim.data.set_mocap_pos('ur5_mocap', gripper_target)
-        self.sim.data.set_mocap_quat('ur5_mocap', gripper_rotation)
+        self.sim.data.set_mocap_pos('ur5_mocap', pusher_target)
+        self.sim.data.set_mocap_quat('ur5_mocap', pusher_rotation)
         for _ in range(10):
             self.sim.step()
 
         # Extract information for sampling goals.
-        self.initial_pusher_xpos = self.sim.data.get_site_xpos('pusher').copy()
-        if self.has_object:
-            self.height_offset = self.sim.data.get_site_xpos('object0')[2]
+        # self.initial_pusher_xpos = self.sim.data.get_site_xpos('pusher').copy()
 
     def render(self, mode='human', width=500, height=500):
         return super(UR5Env, self).render(mode, width, height)
